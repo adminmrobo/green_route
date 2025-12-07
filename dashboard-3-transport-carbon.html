@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>그린루트 - 대중교통 & 탄소절감 효과</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #064e3b 0%, #065f46 30%, #047857 60%, #10b981 100%);
+            min-height: 100vh;
+            padding: 30px;
+            color: #f1f5f9;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 52px;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 12px;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+
+        .stats-hero {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .hero-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 35px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .hero-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .hero-icon {
+            font-size: 56px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+        }
+
+        .hero-value {
+            font-size: 48px;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 8px;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-label {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+        }
+
+        .hero-trend {
+            margin-top: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fef3c7;
+            background: rgba(254, 243, 199, 0.2);
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 12px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 35px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .chart-title {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 25px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 340px;
+        }
+
+        .impact-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .impact-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .impact-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .impact-icon {
+            font-size: 42px;
+        }
+
+        .impact-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .impact-value {
+            font-size: 42px;
+            font-weight: 900;
+            color: #fef3c7;
+            margin-bottom: 10px;
+        }
+
+        .impact-desc {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+        }
+
+        .comparison-section {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 35px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .comparison-title {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 30px;
+            color: white;
+            text-align: center;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .comparison-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            border: 2px solid;
+        }
+
+        .comparison-item.before {
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .comparison-item.after {
+            border-color: rgba(254, 243, 199, 0.5);
+        }
+
+        .comparison-label {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 12px;
+        }
+
+        .comparison-item.before .comparison-label {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .comparison-item.after .comparison-label {
+            background: rgba(254, 243, 199, 0.2);
+            color: #fef3c7;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-name {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .metric-number {
+            font-size: 22px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .trees-visual {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .tree-icon {
+            font-size: 32px;
+            animation: treeGrow 0.5s ease-out;
+        }
+
+        @keyframes treeGrow {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .achievement-badge {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            margin-top: 30px;
+            box-shadow: 0 10px 40px rgba(251, 191, 36, 0.4);
+        }
+
+        .achievement-badge h3 {
+            font-size: 24px;
+            font-weight: 800;
+            color: #78350f;
+            margin-bottom: 10px;
+        }
+
+        .achievement-badge p {
+            font-size: 16px;
+            color: #92400e;
+            font-weight: 600;
+        }
+
+        .progress-bar-container {
+            background: rgba(0, 0, 0, 0.2);
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #fef3c7, #fbbf24);
+            border-radius: 10px;
+            transition: width 2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #78350f;
+        }
+
+        .live-counter {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .live-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+            }
+        }
+
+        .counter-value {
+            font-size: 36px;
+            font-weight: 900;
+            color: #22c55e;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌱 대중교통 이용 & 탄소절감 효과</h1>
+            <p>실시간 환경 영향 측정 대시보드</p>
+        </div>
+
+        <!-- 주요 지표 히어로 섹션 -->
+        <div class="stats-hero">
+            <div class="hero-card">
+                <div class="hero-icon">🚇</div>
+                <div class="hero-value">70%</div>
+                <div class="hero-label">대중교통 이용률</div>
+                <div class="hero-trend">↑ +48% 증가</div>
+            </div>
+
+            <div class="hero-card">
+                <div class="hero-icon">🌍</div>
+                <div class="hero-value" id="co2Saved">20.2</div>
+                <div class="hero-label">톤 CO₂ 절감 (오늘)</div>
+                <div class="hero-trend">↑ 전년 대비 +156%</div>
+            </div>
+
+            <div class="hero-card">
+                <div class="hero-icon">🚗</div>
+                <div class="hero-value">-34%</div>
+                <div class="hero-label">자가용 이용 감소</div>
+                <div class="hero-trend">↓ 목표 달성률 112%</div>
+            </div>
+
+            <div class="hero-card">
+                <div class="hero-icon">🌳</div>
+                <div class="hero-value" id="treeEquiv">2,847</div>
+                <div class="hero-label">소나무 식재 효과</div>
+                <div class="hero-trend">↑ 연간 20,196톤 기준</div>
+            </div>
+        </div>
+
+        <!-- 차트 섹션 -->
+        <div class="dashboard-grid">
+            <!-- 대중교통 이용 추이 -->
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>📈</span>
+                    <span>대중교통 이용 추이 (최근 6개월)</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="transportTrendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 교통수단별 비율 -->
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>🚌</span>
+                    <span>교통수단별 이용 비율</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="transportPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 환경 영향 카드 -->
+        <div class="impact-grid">
+            <div class="impact-card">
+                <div class="impact-header">
+                    <div class="impact-icon">⚡</div>
+                </div>
+                <div class="impact-title">에너지 절감</div>
+                <div class="impact-value">32.4</div>
+                <div class="impact-desc">
+                    <strong>GJ (기가줄)</strong><br>
+                    자가용 대비 대중교통 이용 시 절감되는 에너지량
+                </div>
+                <div class="live-counter">
+                    <div class="live-label">
+                        <div class="live-dot"></div>
+                        <span>실시간 절감량</span>
+                    </div>
+                    <div class="counter-value" id="energySaved">184.2</div>
+                    <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 5px;">MJ</div>
+                </div>
+            </div>
+
+            <div class="impact-card">
+                <div class="impact-header">
+                    <div class="impact-icon">💰</div>
+                </div>
+                <div class="impact-title">경제적 가치</div>
+                <div class="impact-value">311.8</div>
+                <div class="impact-desc">
+                    <strong>억원 / 연간</strong><br>
+                    • 주차 대기 시간 감소: 184억원<br>
+                    • CO₂ 감축 비용: 65억원<br>
+                    • 관광객 증가: 62.8억원
+                </div>
+            </div>
+
+            <div class="impact-card">
+                <div class="impact-header">
+                    <div class="impact-icon">🏥</div>
+                </div>
+                <div class="impact-title">건강 효과</div>
+                <div class="impact-value">892</div>
+                <div class="impact-desc">
+                    <strong>명 호흡기 질환 예방</strong><br>
+                    미세먼지 감소로 인한 건강 개선 효과<br>
+                    의료비 절감: 연 42억원
+                </div>
+            </div>
+        </div>
+
+        <!-- Before/After 비교 -->
+        <div class="comparison-section">
+            <div class="comparison-title">🔄 시스템 도입 전후 비교</div>
+            <div class="comparison-grid">
+                <!-- Before -->
+                <div class="comparison-item before">
+                    <div class="comparison-label">⚠️ 도입 전 (2024년)</div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-name">자가용 이용률</div>
+                        <div class="metric-number" style="color: #fca5a5;">48%</div>
+                    </div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-name">평균 주차 대기시간</div>
+                        <div class="metric-number" style="color: #fca5a5;">25분</div>
+                    </div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-name">일일 CO₂ 배출량</div>
+                        <div class="metric-number" style="color: #fca5a5;">42.6톤</div>
+                    </div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-name">교통 혼잡도</div>
+                        <div class="metric-number" style="color: #fca5a5;">78%</div>
+                    </div>
+
+                    <div class="metric-row">
+                        <div class="metric-name">방문객 만족도</div>
+                        <div class="metric-number" style="color: #fca5a5;">3.2/5.0</div>
+                    </div>
+                </div>
+
+                <!-- After -->
+                <div class="comparison-item after">
+                    <div class="comparison-label">✅ 도입 후 (2025년)</div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-name">대중교통 이용률</div>
+                        <div class="metric-number" style="color: #fef3c7;">70%</div>
+                    </div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-name">평균 주차 대기시간</div>
+                        <div class="metric-number" style="color: #fef3c7;">8분</div>
+                    </div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-name">일일 CO₂ 절감량</div>
+                        <div class="metric-number" style="color: #fef3c7;">20.2톤</div>
+                    </div>
+                    
+                    <div class="metric-row">
+                        <div class="metric-name">교통 혼잡도</div>
+                        <div class="metric-number" style="color: #fef3c7;">34%</div>
+                    </div>
+
+                    <div class="metric-row">
+                        <div class="metric-name">방문객 만족도</div>
+                        <div class="metric-number" style="color: #fef3c7;">4.8/5.0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 소나무 시각화 -->
+            <div style="margin-top: 40px; text-align: center;">
+                <h3 style="font-size: 24px; font-weight: 800; color: white; margin-bottom: 20px;">
+                    🌲 오늘 하루 소나무 식재 효과
+                </h3>
+                <div class="trees-visual" id="treesVisual"></div>
+                <p style="margin-top: 20px; font-size: 14px; color: rgba(255,255,255,0.8);">
+                    오늘 절감한 CO₂ 20.2톤 = 소나무 2,847그루 식재 효과
+                </p>
+            </div>
+
+            <!-- 연간 목표 달성률 -->
+            <div style="margin-top: 40px;">
+                <h3 style="font-size: 24px; font-weight: 800; color: white; margin-bottom: 20px; text-align: center;">
+                    🎯 연간 CO₂ 감축 목표 달성률
+                </h3>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="goalProgress" style="width: 0%;">
+                        0%
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,0.8); margin-top: 10px;">
+                    <span>현재: 20,196톤</span>
+                    <span>목표: 25,000톤</span>
+                </div>
+            </div>
+
+            <!-- 성과 배지 -->
+            <div class="achievement-badge">
+                <h3>🏆 2025년 환경부 우수사례 선정</h3>
+                <p>"대중교통 이용 증대를 통한 탄소중립 실천 모범사례"</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js 차트 생성
+        
+        // 1. 대중교통 이용 추이
+        const ctx1 = document.getElementById('transportTrendChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: ['10월', '11월', '12월', '1월', '2월', '3월'],
+                datasets: [
+                    {
+                        label: '지하철',
+                        data: [38, 40, 42, 43, 44, 46],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: '버스',
+                        data: [24, 25, 26, 27, 28, 29],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: '자가용',
+                        data: [48, 45, 42, 38, 35, 30],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'white',
+                            font: {
+                                size: 14,
+                                weight: '600'
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 60,
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.8)',
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.8)'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 2. 교통수단별 비율 파이차트
+        const ctx2 = document.getElementById('transportPieChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['지하철', '버스', '자가용', '도보/자전거'],
+                datasets: [{
+                    data: [46, 29, 17, 8],
+                    backgroundColor: [
+                        '#3b82f6',
+                        '#10b981',
+                        '#ef4444',
+                        '#f59e0b'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: 'white',
+                            font: {
+                                size: 14,
+                                weight: '600'
+                            },
+                            padding: 20
+                        }
+                    }
+                }
+            }
+        });
+
+        // 소나무 아이콘 생성
+        function generateTrees() {
+            const container = document.getElementById('treesVisual');
+            const treeCount = 50; // 시각적으로 50개만 표시
+            
+            for (let i = 0; i < treeCount; i++) {
+                const tree = document.createElement('div');
+                tree.className = 'tree-icon';
+                tree.textContent = '🌲';
+                tree.style.animationDelay = `${i * 0.02}s`;
+                container.appendChild(tree);
+            }
+        }
+
+        // 목표 달성률 애니메이션
+        function animateProgress() {
+            const progressBar = document.getElementById('goalProgress');
+            const targetPercent = 80.8; // (20196 / 25000) * 100
+            
+            let current = 0;
+            const increment = targetPercent / 100;
+            const interval = setInterval(() => {
+                current += increment;
+                if (current >= targetPercent) {
+                    current = targetPercent;
+                    clearInterval(interval);
+                }
+                progressBar.style.width = current + '%';
+                progressBar.textContent = current.toFixed(1) + '%';
+            }, 20);
+        }
+
+        // 실시간 카운터 업데이트
+        function updateLiveCounters() {
+            const co2Element = document.getElementById('co2Saved');
+            const treeElement = document.getElementById('treeEquiv');
+            const energyElement = document.getElementById('energySaved');
+            
+            setInterval(() => {
+                // CO2 절감량 증가
+                let co2 = parseFloat(co2Element.textContent);
+                co2 += Math.random() * 0.01;
+                co2Element.textContent = co2.toFixed(1);
+                
+                // 소나무 환산
+                let trees = Math.round(co2 * 141);
+                treeElement.textContent = trees.toLocaleString();
+                
+                // 에너지 절감
+                let energy = parseFloat(energyElement.textContent);
+                energy += Math.random() * 0.1;
+                energyElement.textContent = energy.toFixed(1);
+            }, 2000);
+        }
+
+        // 초기화
+        generateTrees();
+        setTimeout(animateProgress, 500);
+        updateLiveCounters();
+    </script>
+</body>
+</html>

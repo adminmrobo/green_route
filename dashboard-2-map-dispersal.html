@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>그린루트 - 실시간 지도 분산 효과</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #2a2f4a 100%);
+            min-height: 100vh;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 25px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .control-panel {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .time-display {
+            font-size: 20px;
+            font-weight: 700;
+            color: #3b82f6;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .toggle-button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        }
+
+        .toggle-button.active {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 0;
+            height: calc(100vh - 87px);
+        }
+
+        .map-section {
+            position: relative;
+            background: #0f1629;
+            overflow: hidden;
+        }
+
+        .map-canvas {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: 
+                radial-gradient(circle at 30% 30%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 70% 70%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
+        }
+
+        .grid-overlay {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(148, 163, 184, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        .zone-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .zone-marker:hover {
+            z-index: 100;
+        }
+
+        .zone-pulse {
+            position: absolute;
+            border-radius: 50%;
+            animation: zone-pulse 2s ease-out infinite;
+        }
+
+        .zone-core {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid;
+            box-shadow: 0 0 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .zone-label {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 8px 14px;
+            border-radius: 10px;
+            white-space: nowrap;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .zone-tooltip {
+            position: absolute;
+            top: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(20px);
+            padding: 20px;
+            border-radius: 16px;
+            width: 280px;
+            border: 2px solid;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .zone-marker:hover .zone-tooltip {
+            opacity: 1;
+        }
+
+        .transit-hub {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+
+        .transit-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            animation: transit-pulse 3s ease-in-out infinite;
+        }
+
+        .transit-label {
+            position: absolute;
+            top: 58px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.9);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .visitor-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #3b82f6 0%, #10b981 100%);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .flow-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+            transform-origin: left center;
+            pointer-events: none;
+            opacity: 0.6;
+            z-index: 2;
+            animation: flow 2s ease-in-out infinite;
+        }
+
+        .side-panel {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            padding: 30px 25px;
+        }
+
+        .panel-section {
+            margin-bottom: 30px;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #3b82f6;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+            border-radius: 15px;
+            padding: 18px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #f1f5f9;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .metric-trend {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .trend-up {
+            color: #10b981;
+        }
+
+        .trend-down {
+            color: #ef4444;
+        }
+
+        .zone-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .zone-item {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        .zone-item:hover {
+            background: rgba(30, 41, 59, 0.9);
+            transform: translateX(5px);
+        }
+
+        .zone-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .zone-item-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .congestion-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .congestion-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1s ease;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .dispersal-effect {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .effect-value {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #10b981, #22c55e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .effect-label {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        @keyframes zone-pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.6;
+            }
+            50% {
+                transform: scale(2);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        @keyframes transit-pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 40px rgba(59, 130, 246, 0.8);
+            }
+        }
+
+        @keyframes flow {
+            0% {
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.6;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(16, 185, 129, 0.8);
+            }
+        }
+
+        @keyframes particle-move {
+            0% {
+                opacity: 0;
+                transform: translate(0, 0) scale(0);
+            }
+            10% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗺️ 실시간 교통 분산 지도</h1>
+        <div class="control-panel">
+            <div class="time-display" id="currentTime">--:--:--</div>
+            <button class="toggle-button" id="dispersalToggle">
+                <span>▶️</span>
+                <span>분산 시작</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- 지도 섹션 -->
+        <div class="map-section">
+            <div class="map-canvas" id="mapCanvas">
+                <div class="grid-overlay"></div>
+            </div>
+        </div>
+
+        <!-- 사이드 패널 -->
+        <div class="side-panel">
+            <div class="panel-section">
+                <div class="panel-title">
+                    <span>📊</span>
+                    실시간 분산 효과
+                </div>
+                <div class="dispersal-effect">
+                    <div class="effect-value" id="dispersalRate">0%</div>
+                    <div class="effect-label">혼잡도 개선율</div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">
+                    <span>📈</span>
+                    주요 지표
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">총 방문객</div>
+                    <div class="metric-value" id="totalVisitors">4,532</div>
+                    <div class="metric-trend trend-up">↑ +247 (지난 시간 대비)</div>
+                </div>
+                <div class="metric-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); border-color: rgba(16, 185, 129, 0.3);">
+                    <div class="metric-label">분산된 방문객</div>
+                    <div class="metric-value" style="color: #10b981;" id="dispersedVisitors">1,847</div>
+                    <div class="metric-trend trend-up">↑ +412 (분산 활성화 후)</div>
+                </div>
+                <div class="metric-card" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05)); border-color: rgba(245, 158, 11, 0.3);">
+                    <div class="metric-label">평균 대기시간</div>
+                    <div class="metric-value" style="color: #f59e0b;" id="waitTime">8분</div>
+                    <div class="metric-trend trend-down">↓ -12분 (분산 전 대비)</div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">
+                    <span>🎯</span>
+                    지역별 혼잡도
+                </div>
+                <div class="zone-list" id="zoneList"></div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #10b981;"></div>
+                        <span>원활</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f59e0b;"></div>
+                        <span>보통</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ef4444;"></div>
+                        <span>혼잡</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 올림픽공원 주요 지점 데이터
+        const parkZones = [
+            { id: 'gymnastic', name: '체조경기장', x: 35, y: 30, congestion: 85, visitors: 1200, color: '#ef4444' },
+            { id: 'olympic-hall', name: '올림픽홀', x: 50, y: 40, congestion: 72, visitors: 950, color: '#f59e0b' },
+            { id: 'soma', name: '소마미술관', x: 70, y: 25, congestion: 45, visitors: 580, color: '#10b981' },
+            { id: 'lake88', name: '88호수', x: 30, y: 60, congestion: 38, visitors: 420, color: '#10b981' },
+            { id: 'wildflower', name: '들꽃마루', x: 60, y: 70, congestion: 28, visitors: 310, color: '#10b981' },
+            { id: 'rose', name: '장미광장', x: 20, y: 45, congestion: 55, visitors: 680, color: '#f59e0b' },
+            { id: 'peace', name: '평화의광장', x: 45, y: 55, congestion: 48, visitors: 392, color: '#10b981' }
+        ];
+
+        // 교통 허브
+        const transitHubs = [
+            { name: '올림픽공원역', type: 'subway', x: 10, y: 40, emoji: '🚇', color: '#3b82f6' },
+            { name: '몽촌토성역', type: 'subway', x: 85, y: 50, emoji: '🚇', color: '#3b82f6' },
+            { name: '잠실역', type: 'subway', x: 8, y: 20, emoji: '🚇', color: '#3b82f6' },
+            { name: '버스 정류장 A', type: 'bus', x: 15, y: 30, emoji: '🚌', color: '#10b981' },
+            { name: '버스 정류장 B', type: 'bus', x: 78, y: 60, emoji: '🚌', color: '#10b981' }
+        ];
+
+        let dispersalActive = false;
+        let animationInterval = null;
+
+        // 시간 업데이트
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('ko-KR');
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // 혼잡도 색상 결정
+        function getCongestionColor(level) {
+            if (level > 70) return '#ef4444';
+            if (level > 50) return '#f59e0b';
+            return '#10b981';
+        }
+
+        // 지도 초기화
+        function initMap() {
+            const mapCanvas = document.getElementById('mapCanvas');
+
+            // 교통 허브 생성
+            transitHubs.forEach(hub => {
+                const hubEl = document.createElement('div');
+                hubEl.className = 'transit-hub';
+                hubEl.style.left = `${hub.x}%`;
+                hubEl.style.top = `${hub.y}%`;
+                hubEl.innerHTML = `
+                    <div class="transit-icon" style="background: linear-gradient(135deg, ${hub.color}, ${hub.color}dd); box-shadow: 0 0 30px ${hub.color}80;">
+                        ${hub.emoji}
+                    </div>
+                    <div class="transit-label">${hub.name}</div>
+                `;
+                mapCanvas.appendChild(hubEl);
+            });
+
+            // 공원 지점 생성
+            parkZones.forEach(zone => {
+                const zoneEl = document.createElement('div');
+                zoneEl.className = 'zone-marker';
+                zoneEl.style.left = `${zone.x}%`;
+                zoneEl.style.top = `${zone.y}%`;
+                
+                const pulseSize = 80 + zone.congestion * 1.2;
+                zoneEl.innerHTML = `
+                    <div class="zone-pulse" style="width: ${pulseSize}px; height: ${pulseSize}px; background: radial-gradient(circle, ${zone.color}60 0%, ${zone.color}20 50%, transparent 100%);"></div>
+                    <div class="zone-core" style="border-color: ${zone.color}; box-shadow: 0 0 20px ${zone.color};"></div>
+                    <div class="zone-label">${zone.name}</div>
+                    <div class="zone-tooltip" style="border-color: ${zone.color};">
+                        <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">${zone.name}</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: #94a3b8;">방문객:</span>
+                            <span style="font-weight: 700;">${zone.visitors}명</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: #94a3b8;">혼잡도:</span>
+                            <span style="font-weight: 700; color: ${zone.color};">${zone.congestion}%</span>
+                        </div>
+                        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-top: 10px; overflow: hidden;">
+                            <div style="width: ${zone.congestion}%; height: 100%; background: ${zone.color}; border-radius: 3px;"></div>
+                        </div>
+                    </div>
+                `;
+                mapCanvas.appendChild(zoneEl);
+            });
+        }
+
+        // 사이드 패널 업데이트
+        function updateSidePanel() {
+            const zoneList = document.getElementById('zoneList');
+            zoneList.innerHTML = '';
+
+            parkZones.forEach(zone => {
+                const zoneItem = document.createElement('div');
+                zoneItem.className = 'zone-item';
+                zoneItem.style.borderLeftColor = zone.color;
+                zoneItem.innerHTML = `
+                    <div class="zone-item-header">
+                        <div class="zone-item-name">${zone.name}</div>
+                        <div style="font-size: 18px; font-weight: 700; color: ${zone.color};">${zone.congestion}%</div>
+                    </div>
+                    <div style="font-size: 12px; color: #94a3b8;">방문객: ${zone.visitors}명</div>
+                    <div class="congestion-bar">
+                        <div class="congestion-fill" style="width: ${zone.congestion}%; background: ${zone.color};"></div>
+                    </div>
+                `;
+                zoneList.appendChild(zoneItem);
+            });
+        }
+
+        // 방문객 파티클 생성
+        function createVisitorParticle(startX, startY, endX, endY) {
+            const mapCanvas = document.getElementById('mapCanvas');
+            const particle = document.createElement('div');
+            particle.className = 'visitor-particle';
+            particle.style.left = `${startX}%`;
+            particle.style.top = `${startY}%`;
+            
+            mapCanvas.appendChild(particle);
+
+            // 애니메이션
+            const duration = 2000 + Math.random() * 1000;
+            const startTime = Date.now();
+            
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                const currentX = startX + (endX - startX) * progress;
+                const currentY = startY + (endY - startY) * progress;
+                
+                particle.style.left = `${currentX}%`;
+                particle.style.top = `${currentY}%`;
+                particle.style.opacity = Math.sin(progress * Math.PI);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    particle.remove();
+                }
+            }
+            
+            animate();
+        }
+
+        // 분산 시뮬레이션
+        function startDispersal() {
+            dispersalActive = true;
+            document.getElementById('dispersalToggle').classList.add('active');
+            document.getElementById('dispersalToggle').innerHTML = '<span>⏸️</span><span>분산 진행중</span>';
+
+            animationInterval = setInterval(() => {
+                // 혼잡한 지역에서 여유있는 지역으로 분산
+                const congestedZones = parkZones.filter(z => z.congestion > 60);
+                const availableZones = parkZones.filter(z => z.congestion < 50);
+
+                if (congestedZones.length > 0 && availableZones.length > 0) {
+                    const from = congestedZones[Math.floor(Math.random() * congestedZones.length)];
+                    const to = availableZones[Math.floor(Math.random() * availableZones.length)];
+
+                    // 파티클 생성
+                    for (let i = 0; i < 3; i++) {
+                        setTimeout(() => {
+                            createVisitorParticle(from.x, from.y, to.x, to.y);
+                        }, i * 200);
+                    }
+
+                    // 혼잡도 업데이트
+                    from.congestion = Math.max(20, from.congestion - 2);
+                    from.visitors = Math.max(100, from.visitors - 20);
+                    to.congestion = Math.min(80, to.congestion + 1);
+                    to.visitors += 20;
+
+                    from.color = getCongestionColor(from.congestion);
+                    to.color = getCongestionColor(to.congestion);
+
+                    updateSidePanel();
+                    
+                    // 분산율 계산
+                    const avgCongestion = parkZones.reduce((sum, z) => sum + z.congestion, 0) / parkZones.length;
+                    const improvement = Math.max(0, 100 - avgCongestion * 1.5);
+                    document.getElementById('dispersalRate').textContent = `${improvement.toFixed(1)}%`;
+
+                    // 지표 업데이트
+                    const dispersed = parseInt(document.getElementById('dispersedVisitors').textContent.replace(',', ''));
+                    document.getElementById('dispersedVisitors').textContent = (dispersed + 20).toLocaleString();
+                }
+            }, 1000);
+        }
+
+        function stopDispersal() {
+            dispersalActive = false;
+            document.getElementById('dispersalToggle').classList.remove('active');
+            document.getElementById('dispersalToggle').innerHTML = '<span>▶️</span><span>분산 시작</span>';
+            
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+            }
+        }
+
+        // 토글 버튼
+        document.getElementById('dispersalToggle').addEventListener('click', () => {
+            if (dispersalActive) {
+                stopDispersal();
+            } else {
+                startDispersal();
+            }
+        });
+
+        // 초기화
+        initMap();
+        updateSidePanel();
+
+        // 실시간 데이터 업데이트
+        setInterval(() => {
+            const totalVisitors = parseInt(document.getElementById('totalVisitors').textContent.replace(',', ''));
+            document.getElementById('totalVisitors').textContent = (totalVisitors + Math.floor(Math.random() * 20 - 5)).toLocaleString();
+        }, 3000);
+    </script>
+</body>
+</html>

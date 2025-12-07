@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>그린루트 올림픽공원 - 통합 대시보드</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+
+        .top-bar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 20px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 36px;
+        }
+
+        .logo-text h1 {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .time-display {
+            font-size: 18px;
+            font-weight: 700;
+            color: #3b82f6;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            max-width: 2000px;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #3b82f6;
+        }
+
+        .metric-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .metric-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: #f1f5f9;
+            margin-bottom: 5px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .metric-label {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .metric-trend {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .trend-up {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .trend-down {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .map-container {
+            position: relative;
+            height: 500px;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .map-grid {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .zone-dot {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .zone-pulse-ring {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.6;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        .zone-center {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid white;
+            position: relative;
+            z-index: 2;
+        }
+
+        .zone-name {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            background: rgba(15, 23, 42, 0.9);
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .transit-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+
+        .transit-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 0 15px currentColor;
+            }
+            50% {
+                box-shadow: 0 0 30px currentColor;
+            }
+        }
+
+        .activity-feed {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 12px;
+            border-left: 3px solid;
+            transition: all 0.3s ease;
+        }
+
+        .activity-item:hover {
+            background: rgba(30, 41, 59, 0.8);
+            transform: translateX(5px);
+        }
+
+        .activity-time {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+            min-width: 60px;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .activity-desc {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .chart-container {
+            height: 250px;
+            margin-top: 15px;
+        }
+
+        .zone-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 10px;
+            border-left: 4px solid;
+        }
+
+        .zone-info {
+            flex: 1;
+        }
+
+        .zone-list-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .congestion-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .congestion-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1s ease;
+        }
+
+        .congestion-value {
+            font-size: 18px;
+            font-weight: 700;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .impact-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .impact-item {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .impact-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .impact-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #10b981;
+            margin-bottom: 5px;
+        }
+
+        .impact-label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .control-panel {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .control-button {
+            flex: 1;
+            padding: 12px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .control-button.active {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+
+        .alert-box {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+            border: 2px solid rgba(239, 68, 68, 0.4);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            color: #fca5a5;
+            margin-bottom: 8px;
+        }
+
+        .alert-content {
+            font-size: 13px;
+            color: #f1f5f9;
+        }
+
+        .particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #10b981);
+            pointer-events: none;
+            animation: particle-float 3s ease-in-out infinite;
+        }
+
+        @keyframes particle-float {
+            0%, 100% {
+                opacity: 0;
+                transform: translateY(0) scale(0);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(0);
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <!-- 상단 바 -->
+    <div class="top-bar">
+        <div class="logo-section">
+            <div class="logo">🌿</div>
+            <div class="logo-text">
+                <h1>그린루트 올림픽공원</h1>
+                <p>Poisson × Markov 기반 스마트 교통 분산 시스템</p>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot"></div>
+                <span style="font-size: 13px; font-weight: 600;">시스템 정상</span>
+            </div>
+            <div class="status-item">
+                <span style="font-size: 13px; color: #94a3b8;">활성 사용자:</span>
+                <span style="font-size: 16px; font-weight: 700; color: #3b82f6;" id="activeUsers">1,247</span>
+            </div>
+            <div class="time-display" id="currentTime">--:--:--</div>
+        </div>
+    </div>
+
+    <!-- 메인 그리드 -->
+    <div class="main-grid">
+        <!-- 왼쪽 패널: 실시간 지표 -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>📊</span>
+                        <span>실시간 주요 지표</span>
+                    </div>
+                </div>
+                
+                <div class="metric-cards">
+                    <div class="metric-card">
+                        <div class="metric-icon">👥</div>
+                        <div class="metric-value" id="visitors">4,532</div>
+                        <div class="metric-label">현재 방문객</div>
+                        <div class="metric-trend trend-up">↑ +247</div>
+                    </div>
+
+                    <div class="metric-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); border-color: rgba(16, 185, 129, 0.3);">
+                        <div class="metric-icon">🚇</div>
+                        <div class="metric-value" style="color: #10b981;">70%</div>
+                        <div class="metric-label">대중교통 이용률</div>
+                        <div class="metric-trend trend-up">↑ +48%</div>
+                    </div>
+
+                    <div class="metric-card" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05)); border-color: rgba(245, 158, 11, 0.3);">
+                        <div class="metric-icon">⏱️</div>
+                        <div class="metric-value" style="color: #f59e0b;">8분</div>
+                        <div class="metric-label">평균 대기시간</div>
+                        <div class="metric-trend trend-down">↓ -12분</div>
+                    </div>
+
+                    <div class="metric-card" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05)); border-color: rgba(34, 197, 94, 0.3);">
+                        <div class="metric-icon">🌱</div>
+                        <div class="metric-value" style="color: #22c55e;" id="co2">20.2</div>
+                        <div class="metric-label">톤 CO₂ 절감</div>
+                        <div class="metric-trend trend-up">↑ +5.7%</div>
+                    </div>
+                </div>
+
+                <div class="impact-summary">
+                    <div class="impact-item">
+                        <div class="impact-icon">💰</div>
+                        <div class="impact-value">311.8억</div>
+                        <div class="impact-label">연간 경제적 가치</div>
+                    </div>
+
+                    <div class="impact-item">
+                        <div class="impact-icon">🌳</div>
+                        <div class="impact-value" id="trees">2,847</div>
+                        <div class="impact-label">소나무 식재 효과</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>🎯</span>
+                        <span>지역별 혼잡도</span>
+                    </div>
+                </div>
+
+                <div id="zoneList"></div>
+            </div>
+        </div>
+
+        <!-- 중앙 패널: 지도 -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>🗺️</span>
+                        <span>실시간 교통 분산 지도</span>
+                    </div>
+                </div>
+
+                <div class="map-container" id="mapContainer">
+                    <div class="map-grid"></div>
+                </div>
+
+                <div class="control-panel">
+                    <button class="control-button" id="dispersalBtn">
+                        <span>▶️ 분산 시작</span>
+                    </button>
+                    <button class="control-button">
+                        <span>📱 앱 연동</span>
+                    </button>
+                    <button class="control-button">
+                        <span>📈 상세 분석</span>
+                    </button>
+                </div>
+
+                <div class="alert-box">
+                    <div class="alert-header">
+                        <span>⚠️</span>
+                        <span>혼잡 알림</span>
+                    </div>
+                    <div class="alert-content">
+                        체조경기장 주차장 혼잡 (85%) - 127명에게 우회 경로 안내 중
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>📈</span>
+                        <span>시간별 방문객 추이</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="visitorChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽 패널: 활동 & 교통수단 -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>⚡</span>
+                        <span>실시간 활동</span>
+                    </div>
+                </div>
+
+                <div class="activity-feed" id="activityFeed"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>🚌</span>
+                        <span>교통수단 분포</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="transportChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>🌍</span>
+                        <span>환경 영향</span>
+                    </div>
+                </div>
+
+                <div style="text-align: center; padding: 20px 0;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🌳</div>
+                    <div style="font-size: 36px; font-weight: 800; color: #22c55e; margin-bottom: 10px;">
+                        <span id="co2Today">20.2</span>톤
+                    </div>
+                    <div style="font-size: 14px; color: #94a3b8; margin-bottom: 20px;">
+                        오늘 절감한 CO₂
+                    </div>
+
+                    <div style="background: rgba(34, 197, 94, 0.1); padding: 15px; border-radius: 12px; border: 1px solid rgba(34, 197, 94, 0.3);">
+                        <div style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">
+                            연간 목표 달성률
+                        </div>
+                        <div style="font-size: 32px; font-weight: 800; color: #22c55e;">
+                            80.8%
+                        </div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 5px;">
+                            현재: 20,196톤 / 목표: 25,000톤
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 올림픽공원 구역 데이터
+        const zones = [
+            { name: '체조경기장', x: 35, y: 30, congestion: 85, color: '#ef4444' },
+            { name: '올림픽홀', x: 50, y: 40, congestion: 72, color: '#f59e0b' },
+            { name: '소마미술관', x: 70, y: 25, congestion: 45, color: '#10b981' },
+            { name: '88호수', x: 30, y: 60, congestion: 38, color: '#10b981' },
+            { name: '들꽃마루', x: 60, y: 70, congestion: 28, color: '#10b981' },
+            { name: '장미광장', x: 20, y: 45, congestion: 55, color: '#f59e0b' },
+            { name: '평화의광장', x: 45, y: 55, congestion: 48, color: '#10b981' }
+        ];
+
+        const transits = [
+            { name: '올림픽공원역', x: 10, y: 40, emoji: '🚇', color: '#3b82f6' },
+            { name: '몽촌토성역', x: 85, y: 50, emoji: '🚇', color: '#3b82f6' },
+            { name: '버스 A', x: 15, y: 30, emoji: '🚌', color: '#10b981' }
+        ];
+
+        // 시간 업데이트
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('ko-KR');
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // 지도 초기화
+        function initMap() {
+            const map = document.getElementById('mapContainer');
+
+            // 교통 허브
+            transits.forEach(t => {
+                const el = document.createElement('div');
+                el.className = 'transit-marker';
+                el.style.left = t.x + '%';
+                el.style.top = t.y + '%';
+                el.innerHTML = `<div class="transit-icon" style="background: ${t.color}; color: white;">${t.emoji}</div>`;
+                map.appendChild(el);
+            });
+
+            // 구역
+            zones.forEach(z => {
+                const el = document.createElement('div');
+                el.className = 'zone-dot';
+                el.style.left = z.x + '%';
+                el.style.top = z.y + '%';
+                el.innerHTML = `
+                    <div class="zone-pulse-ring" style="background: radial-gradient(circle, ${z.color}60, transparent);"></div>
+                    <div class="zone-center" style="background: ${z.color}; box-shadow: 0 0 15px ${z.color};"></div>
+                    <div class="zone-name">${z.name}</div>
+                `;
+                map.appendChild(el);
+            });
+        }
+
+        // 구역 목록 업데이트
+        function updateZoneList() {
+            const list = document.getElementById('zoneList');
+            list.innerHTML = zones.map(z => `
+                <div class="zone-list-item" style="border-left-color: ${z.color};">
+                    <div class="zone-info">
+                        <div class="zone-list-name">${z.name}</div>
+                        <div class="congestion-bar">
+                            <div class="congestion-fill" style="width: ${z.congestion}%; background: ${z.color};"></div>
+                        </div>
+                    </div>
+                    <div class="congestion-value" style="color: ${z.color};">${z.congestion}%</div>
+                </div>
+            `).join('');
+        }
+
+        // 활동 피드
+        const activities = [
+            { time: '방금 전', title: '🚶 김민수님 경로 선택', desc: '추천 경로로 이동 시작', color: '#3b82f6' },
+            { time: '1분 전', title: '✅ 분산 효과 확인', desc: '체조경기장 혼잡도 15% 감소', color: '#10b981' },
+            { time: '2분 전', title: '🚇 지하철 이용 증가', desc: '5호선 이용률 +8%', color: '#3b82f6' },
+            { time: '3분 전', title: '🌱 CO₂ 절감', desc: '자가용 대비 -3.2kg 절감', color: '#22c55e' },
+            { time: '4분 전', title: '📱 앱 사용자 증가', desc: '127명 새로운 경로 요청', color: '#f59e0b' },
+            { time: '5분 전', title: '⚠️ 혼잡 알림', desc: '올림픽홀 주차장 우회 안내', color: '#ef4444' }
+        ];
+
+        function initActivityFeed() {
+            const feed = document.getElementById('activityFeed');
+            feed.innerHTML = activities.map(a => `
+                <div class="activity-item" style="border-left-color: ${a.color};">
+                    <div class="activity-time">${a.time}</div>
+                    <div class="activity-content">
+                        <div class="activity-title">${a.title}</div>
+                        <div class="activity-desc">${a.desc}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 방문객 차트
+        const visitorCtx = document.getElementById('visitorChart').getContext('2d');
+        new Chart(visitorCtx, {
+            type: 'line',
+            data: {
+                labels: ['09:00', '11:00', '13:00', '15:00', '17:00', '19:00'],
+                datasets: [{
+                    label: '방문객',
+                    data: [1200, 2800, 4500, 5200, 4100, 2400],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                    }
+                }
+            }
+        });
+
+        // 교통수단 차트
+        const transportCtx = document.getElementById('transportChart').getContext('2d');
+        new Chart(transportCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['지하철', '버스', '자가용', '도보'],
+                datasets: [{
+                    data: [46, 29, 17, 8],
+                    backgroundColor: ['#3b82f6', '#10b981', '#ef4444', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: 'white', padding: 15 }
+                    }
+                }
+            }
+        });
+
+        // 실시간 업데이트
+        setInterval(() => {
+            const visitors = document.getElementById('visitors');
+            const current = parseInt(visitors.textContent.replace(',', ''));
+            visitors.textContent = (current + Math.floor(Math.random() * 20 - 5)).toLocaleString();
+
+            const co2 = document.getElementById('co2');
+            const co2Today = document.getElementById('co2Today');
+            const value = parseFloat(co2.textContent);
+            const newValue = (value + Math.random() * 0.01).toFixed(1);
+            co2.textContent = newValue;
+            co2Today.textContent = newValue;
+
+            const trees = document.getElementById('trees');
+            trees.textContent = Math.round(newValue * 141).toLocaleString();
+
+            const users = document.getElementById('activeUsers');
+            const userCount = parseInt(users.textContent.replace(',', ''));
+            users.textContent = (userCount + Math.floor(Math.random() * 10 - 3)).toLocaleString();
+        }, 3000);
+
+        // 분산 버튼
+        document.getElementById('dispersalBtn').addEventListener('click', function() {
+            this.classList.toggle('active');
+            if (this.classList.contains('active')) {
+                this.innerHTML = '<span>⏸️ 분산 진행중</span>';
+            } else {
+                this.innerHTML = '<span>▶️ 분산 시작</span>';
+            }
+        });
+
+        // 초기화
+        initMap();
+        updateZoneList();
+        initActivityFeed();
+    </script>
+</body>
+</html>
